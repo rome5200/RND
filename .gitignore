@@ -1,0 +1,22 @@
+# --- 원본 데이터 (개인정보 포함, 저장소에 올리지 않음) ---
+# 이알앤디_과제정보.csv 에는 연구자 11,788명의 실명 + 연구자번호가 포함되어 있어
+# 저장소에 커밋하지 않는다. 받는 방법은 01_data/README.md 참고.
+01_data/*.csv
+
+# --- OMC 운영 artifact (세션 상태/텔레메트리) ---
+.omc/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- OS ---
+Thumbs.db
+desktop.ini
+.DS_Store
