@@ -20,3 +20,6 @@ env/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# --- Claude Design 핸드오프 번들 (바이너리, index.html/css/js로 이미 재현됨) ---
+UI mockups for design-brief-handoff.zip
