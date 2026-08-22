@@ -66,16 +66,22 @@ function renderLegend(nClusters) {
 }
 
 async function loadClusters() {
-  const res = await fetch("/api/clusters");
-  const data = await res.json();
-  clusterPoints = data.points;
-  fitScales(clusterPoints);
-  renderLegend(data.n_clusters);
-  renderClusterMap(null);
+  try {
+    const res = await fetch("/api/clusters");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    clusterPoints = data.points;
+    fitScales(clusterPoints);
+    renderLegend(data.n_clusters);
+    renderClusterMap(null);
+  } catch (e) {
+    console.error("클러스터 지도를 불러오지 못했습니다.", e);
+  }
 }
 
 function renderBanner(state) {
   banner.className = "";
+  banner.style.display = "";
   if (state === "blank") {
     banner.textContent = "검색어를 입력해주세요.";
     banner.className = "blank";
@@ -85,8 +91,9 @@ function renderBanner(state) {
   } else if (state === "reference") {
     banner.textContent = "정확히 일치하는 유사 과제를 찾지 못했습니다. 아래는 유사도가 가장 높았던 3건입니다(참고용).";
     banner.className = "reference";
-  } else {
-    banner.style.display = "none";
+  } else if (state === "error") {
+    banner.textContent = "결과를 불러오지 못했습니다. 서버 상태를 확인해주세요.";
+    banner.className = "blank";
   }
 }
 
@@ -129,8 +136,15 @@ async function runSearch() {
   const query = topicInput.value;
   const rankBy = rankSelect.value;
   const url = `/api/search?query=${encodeURIComponent(query)}&rank_by=${encodeURIComponent(rankBy)}`;
-  const res = await fetch(url);
-  const result = await res.json();
+  let result;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    result = await res.json();
+  } catch (e) {
+    renderBanner("error");
+    return;
+  }
 
   if (result.blank_query) { renderBanner("blank"); taskBody.innerHTML = ""; researcherBody.innerHTML = ""; statCluster.textContent = "–"; statCount.textContent = "–"; statOrgs.innerHTML = ""; renderClusterMap(null); return; }
   if (result.empty_corpus) { renderBanner("empty_corpus"); return; }
