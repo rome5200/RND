@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -13,10 +14,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "01_data"
 SIMILARITY_THRESHOLD = 0.15
+# 임베딩 코사인 유사도는 TF-IDF와 분포가 완전히 달라(무관한 질의도 노이즈 플로어가 0.15~0.5대) 같은
+# 임계값을 못 씀. 실측 결과 무관한 질의는 0.6을 거의 못 넘고(1680건 중 1건), 진짜 의미적으로 겹치는
+# 사례(예: "리튬이온 배터리 열폭주 억제" ↔ "이차전지 셀 발열 안정화")는 0.6대 초반~중반을 넘겨서
+# 0.6으로 잡음 — 03_webapp/backend/_verify_embedding.py 분포 확인 결과 근거
+EMBEDDING_SIMILARITY_THRESHOLD = 0.6
 N_CLUSTERS = 6
 TOP_N_TASKS = 5
 TOP_N_RESEARCHERS = 5
 RANK_OPTIONS = ["최고 유사도", "유사 과제 건수", "합산 점수"]
+EMBEDDING_MODEL_NAME = "jhgan/ko-sroberta-multitask"
 
 
 @dataclass
@@ -28,6 +35,8 @@ class PipelineState:
     coords: np.ndarray
     kmeans: KMeans
     dup_pairs: set
+    embedder: SentenceTransformer
+    embeddings: np.ndarray
 
 
 def _load_joined_df() -> pd.DataFrame:
@@ -88,9 +97,13 @@ def load_and_build() -> PipelineState:
     sizes = df["_cluster"].value_counts()
     assert len(sizes) == N_CLUSTERS and (sizes > 0).all(), "빈 클러스터 존재"
 
+    embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    embeddings = embedder.encode(df["과제명"].tolist(), normalize_embeddings=True)
+
     return PipelineState(
         df=df, vectorizer=vectorizer, tfidf_matrix=tfidf_matrix,
         svd=svd, coords=coords, kmeans=kmeans, dup_pairs=dup_pairs,
+        embedder=embedder, embeddings=embeddings,
     )
 
 
@@ -116,7 +129,18 @@ def search_similar_tasks(state: PipelineState, query: str, threshold: float = SI
         return {"empty_corpus": False, "blank_query": True}
 
     query_vec = state.vectorizer.transform([query])
-    sims = cosine_similarity(query_vec, state.tfidf_matrix).flatten()
+    tfidf_sims = cosine_similarity(query_vec, state.tfidf_matrix).flatten()
+
+    query_embedding = state.embedder.encode([query], normalize_embeddings=True)[0]
+    embedding_sims = state.embeddings @ query_embedding
+    # 임베딩 유사도는 자체 임계값(EMBEDDING_SIMILARITY_THRESHOLD)을 넘을 때만 신뢰 —
+    # 그 밑은 노이즈 플로어이므로 0으로 눌러서 TF-IDF 임계값(threshold)에 새어 들어가지 않게 함
+    gated_embedding_sims = np.where(embedding_sims >= EMBEDDING_SIMILARITY_THRESHOLD, embedding_sims, 0.0)
+
+    # 표면 단어가 겹치는 경우(TF-IDF)와 어휘는 달라도 의미가 겹치는 경우(임베딩) 중
+    # 어느 한쪽이라도 강하게 유사하다고 판단하면 반영되도록 두 신호의 최댓값을 사용
+    sims = np.maximum(tfidf_sims, gated_embedding_sims)
+
     query_coord = state.svd.transform(query_vec)[0]
     query_cluster = int(state.kmeans.predict(state.svd.transform(query_vec))[0])
 
