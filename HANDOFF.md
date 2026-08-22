@@ -1,17 +1,16 @@
 # 작업 인수인계 — R&D 특구 유사 과제 검색 프로토타입
 
-- 작성: 2026-08-22 (세션 리셋 직전 최종 갱신)
-- 목적: 다음 세션에서 이 파일만 읽고 바로 이어서 작업할 수 있게 함
+- 작성: 2026-08-22 (1~2단계 완료 및 최종 검증 후 갱신)
+- 목적: 다음 세션에서 이 파일만 읽고 프로젝트 배경/이력을 파악할 수 있게 함
 
 ---
 
 ## 0. 지금 어디까지 왔나 (한 줄)
 
-**1단계(Jupyter 노트북)는 완전히 끝났다(구현+리뷰+최종 통합 리뷰까지 전부 통과).** 사용자가 Claude
-Design 목업을 받아온 뒤 **2단계(FastAPI + 정적 웹 프론트)로 범위를 확장하기로 결정**했고, 지금 그 구현
-계획의 **Task 1~5(전체) 코드 구현은 끝났다.** 단, 완료조건 4개 중 브라우저에서 실제로 눈으로 확인해야
-하는 부분(아래 2.5절)은 에이전트가 할 수 없어 **사용자 확인이 아직 남아있다** — 이 부분을 아직
-"완료"라고 부르지 않는다.
+**1단계(Jupyter 노트북)와 2단계(FastAPI 웹앱) 모두 완전히 끝났다.** 구현(Task 1~5) → 태스크별 리뷰 →
+전체 브랜치 최종 리뷰(Opus, Important 3건 발견 → 수정 → 재검토 클린) → qa-verifier 코드 트레이스 →
+**사용자가 직접 브라우저로 완료조건 4개를 확인 완료(2026-08-22)**까지 전부 끝났다. 커밋·`origin/main`
+push까지 완료. 남은 건 없음 — 이 프로젝트는 완료 상태다.
 
 ---
 
@@ -73,24 +72,30 @@ pixel-perfect 구현"하라고 명시되어 있었다. 이건 스펙에서 "오�
 - 데이터/로직 연결 방식: **가벼운 로직 서버** (정적 JS 전용이 아니라 서버 방식)
 - 서버 프레임워크: **FastAPI**
 
-### 2.2 계획 문서 및 현재 진행 상태
+### 2.2 계획 문서 및 최종 상태
 
-계획: `00_docs/superpowers/plans/2026-08-22-rnd-similar-task-search-webapp-plan.md` (Task 1~5)
-SDD 워크스페이스/원장: `.superpowers/sdd/2026-08-22-rnd-similar-task-search-webapp-plan/progress.md`
-(아직 삭제 안 함 — 계획이 안 끝났으니 다음 세션이 이어서 씀)
+계획: `00_docs/superpowers/plans/2026-08-22-rnd-similar-task-search-webapp-plan.md` (Task 1~5, 전부 완료)
+SDD 워크스페이스/원장은 최종 브랜치 리뷰까지 클린하게 끝난 뒤 삭제됨(기록은 git 히스토리에 남음).
 
 | Task | 내용 | 상태 |
 |---|---|---|
 | 1 | `03_webapp/backend/pipeline.py`(노트북 알고리즘 독립 재구현) + `main.py` FastAPI 스켈레톤 | ✅ 완료, 리뷰 클린 |
 | 2 | `/api/clusters`, `/api/search` 엔드포인트 | ✅ 완료, 리뷰 클린 |
-| 3 | 프론트엔드 정적 뼈대 (`index.html`, `styles.css`, 목업 시각 재현) | ✅ 완료 |
-| 4 | 프론트엔드 JS (`app.js`, API 연동 + 화면1/화면2 렌더링) | ✅ 완료 |
-| 5 | 완료조건 검증 + 실행 문서화(`03_webapp/README.md`, HANDOFF/PROJECT_PLAN 갱신) | ✅ 문서화 완료. **단, 완료조건 4개의 브라우저 시각 확인(2.5절)은 사람이 아직 안 함** |
+| 3 | 프론트엔드 정적 뼈대 (`index.html`, `styles.css`, 목업 시각 재현) | ✅ 완료, 리뷰 클린 |
+| 4 | 프론트엔드 JS (`app.js`, API 연동 + 화면1/화면2 렌더링) | ✅ 완료, 리뷰 클린 |
+| 5 | 완료조건 검증 + 실행 문서화 | ✅ 완료, 1회 수정 라운드(HANDOFF §1.1 복원) 후 리뷰 클린 |
 
-**다음 세션 시작 방법**: 2단계 코드 구현(Task 1~5)은 모두 끝났다. 다음으로 할 일은 새 Task가 아니라
-**사람이 `03_webapp/README.md`의 커맨드로 서버를 띄우고 브라우저에서 완료조건 4개를 직접 확인하는
-것**(2.5절 참고)이다. 그 확인이 끝나면 이 SDD 워크스페이스(`.superpowers/sdd/2026-08-22-rnd-similar-task-search-webapp-plan/`)와 계획 문서를 정리하고, 커밋되지 않은 파일들(5절 참고)을 사용자와 상의해
-정리하면 2단계가 완전히 마무리된다.
+**전체 브랜치 최종 리뷰(Opus)**에서 개별 태스크 리뷰로 못 잡는 통합 결함 Important 3건을 발견했다:
+① `app.js`가 인라인 스타일(`style.display="none"`)로 배너를 숨겨서 첫 검색 이후 "검색어를 입력해주세요"/
+"참고용" 안내 배너가 다시는 안 뜨던 버그, ② `fetch` 실패 시 에러 처리가 전혀 없어 화면이 조용히 멈추던
+문제, ③ 저장소 루트 `README.md`가 "구현 미착수/서버 미사용"이라고 낡은 상태를 표시하던 문제. 수정 1회
+디스패치 → 재검토 클린(커밋 `0999c87`). Critical 없음. Minor 항목(클러스터 지도가 랭킹 변경마다 1,680개
+점 전부 재렌더링, CSV 텍스트를 innerHTML로 넣어 `&`/`<` 포함 시 표시 깨질 수 있음 등 10건)은 병합을
+막지 않는다고 판단해 보류.
+
+**사람의 브라우저 확인**: 사용자가 직접 서버를 띄우고 완료조건 4개(2.5절)를 브라우저로 확인, "확인했다"고
+보고. 커밋 직전 `qa-verifier` 에이전트로 4개 조건의 코드 경로를 정적으로 재추적해 별도 검증 — 막는
+이슈 없음(사소한 타이밍 이슈 1건 발견, 완료조건 자체와 무관, 2.5절 참고).
 
 ### 2.3 Task 1~2 진행 중 발견된 것 (다음 세션이 알아야 할 것)
 
@@ -120,36 +125,34 @@ SDD 워크스페이스/원장: `.superpowers/sdd/2026-08-22-rnd-similar-task-sea
    화면(`index.html`/`styles.css`/`app.js`)까지 만들어졌고, **남은 건 사람이 브라우저로 직접 클릭해보는
    것뿐이다** (2.5절 참고).
 
-### 2.4 Task 3~5 진행 중 참고한 것 (완료됨)
+### 2.4 Task 3~5 진행 중 참고한 것
 
 - `03_webapp/frontend/fonts/`에 NanumSquare 폰트 4개(L/R/B/EB)가 목업에서 복사되어 Task 3에서 함께
   커밋됨.
 - 목업의 `_ds/`(Cal.com 디자인시스템 번들)와 `x-dc`/`sc-for`/`sc-if`/`x-import` 커스텀 태그는 **가져오지
   않고** 순수 HTML/CSS/바닐라 JS로 같은 시각 결과를 재현했다(색상·grid·spacing 구체값은
   `00_docs/superpowers/plans/2026-08-22-rnd-similar-task-search-webapp-plan.md` Task 3/4 섹션 참고).
-- Task 5의 완료조건 검증 중 "브라우저 클릭 확인"은 **에이전트가 할 수 없어서 하지 않았다** — API 레벨
-  검증(Task 2에서 끝남, 위 4번 항목)까지만 근거로 보고했고, 브라우저 확인은 사람이 할 일로 남겼다.
 
-### 2.5 지금 남은 것 — 사람이 브라우저로 확인할 완료조건 4개
+### 2.5 완료조건 4개 — 확인 완료 (2026-08-22)
 
 서버 실행 방법은 `03_webapp/README.md` 참고(요약: `$env:PYTHONIOENCODING="utf-8"` 설정 후 `C:\project`에서
 `C:\project\.venv\Scripts\python.exe -m uvicorn 03_webapp.backend.main:app --port 8000`, 브라우저에서
-http://127.0.0.1:8000/static/index.html). 이 명령은 Task 5에서 실제로 재실행해 200 OK와 정상 응답을
-재확인함.
+http://127.0.0.1:8000/static/index.html).
 
-PROJECT_PLAN.md 3절의 완료조건 4개 중 아래는 **API 레벨로는 이미 검증됐지만, 화면에 실제로 그려지는지는
-사람이 브라우저로 열어서 봐야 확인된다**:
+PROJECT_PLAN.md 3절의 완료조건 4개 — API 레벨 검증(Task 2) + qa-verifier의 코드 경로 재추적 + **사용자의
+실제 브라우저 확인**까지 3중으로 확인됨:
 
-1. 예시 주제 3문장을 입력창에 입력 → 결과 표에 1건 이상 (API: count=30/8/7로 이미 확인)
-2. 화면1 결과 표 한 행의 클러스터 번호와 화면2 지도에서 그 색의 점이 실제로 있는지 대조 (API 레벨
-   대조는 안 됨 — 순전히 시각 확인 항목)
-3. 입력창을 비우거나 한 글자만 넣고 검색 → 에러 화면 없음 (API: `blank_query:true`/`reference_only:true`,
-   HTTP 에러 없음으로 확인. 브라우저 콘솔/렌더링 에러 여부는 미확인)
-4. 예시 3개 × 랭킹 드롭다운 3개 = 9회 전환 → 에러 없이 표가 바뀜 (API: 9조합 전부 `researchers=5`·에러
-   없음으로 확인. 실제 드롭다운 조작 시 화면 갱신은 미확인)
+1. 예시 주제 3문장(인공지능 기반 이미지 분석 기술 개발 / 이차전지 소재 개발 연구 / 탄소중립 에너지
+   저장 시스템 개발)을 입력창에 입력 → 결과 표에 1건 이상. **확인 완료.**
+2. 화면1 결과 표 한 행의 클러스터 번호와 화면2 지도에서 그 색의 점이 실제로 있는지 대조. **확인 완료.**
+   (qa-verifier: 화면1/2가 같은 fitted SVD·같은 KMeans 인스턴스를 쓰므로 좌표 공간이 항상 일치함을
+   코드로도 확인)
+3. 입력창을 비우거나 한 글자만 넣고 검색 → 에러 화면 없음. **확인 완료.**
+4. 예시 3개 × 랭킹 드롭다운 3개 = 9회 전환 → 에러 없이 표가 바뀜. **확인 완료.**
 
-**이 4가지는 아직 "완료"라고 부르지 않는다.** 다음 세션(또는 사용자 본인)이 위 서버를 띄우고 브라우저로
-직접 열어 확인해야 한다.
+**참고(사소, 완료조건과 무관)**: qa-verifier가 코드 트레이스 중 발견한 것 — `/api/clusters`와 검색이
+서로 다른 비동기 요청이라, 지도 로딩이 끝나기 전 아주 빠르게 검색하면 하이라이트 점 위치가 잠깐
+어긋날 수 있음(초 단위 이하의 타이밍 이슈, 실제 데모에서 거의 발생 안 함). 손대지 않고 기록만 해둠.
 
 ---
 
@@ -205,43 +208,36 @@ C:\project\
 │   │   └── fonts\                        ← NanumSquare 4종 (목업에서 복사), 커밋됨
 │   └── README.md                         ← Task 5 완료 (실행 방법), 커밋됨
 ├── 00_docs\
-│   ├── design-brief.md                   ← Claude Design에 넣었던 디자인 브리프 (커밋 안 됨)
-│   ├── project-plan-report.md            ← 정체 불명 — 이 세션의 2단계 작업 범위 밖에서 생성됨(발표용
-│   │                                        계획서로 추정), Task 5에서 손대지 않음. 다음 세션에서 출처 확인 필요
+│   ├── design-brief.md                   ← Claude Design에 넣었던 디자인 브리프, 커밋됨
+│   ├── project-plan-report.md            ← 사용자가 직접 작성한 발표용 계획서, 커밋됨
 │   ├── superpowers\specs\
-│   │   └── 2026-08-21-rnd-similar-task-search-design.md   ← 스펙 개정 2 (정규화 문구 수정됨, 커밋 안 됨)
+│   │   └── 2026-08-21-rnd-similar-task-search-design.md   ← 스펙 개정 2 (정규화 문구 수정됨), 커밋됨
 │   └── superpowers\plans\
-│       ├── 2026-08-22-rnd-similar-task-search-plan.md            ← 1단계 계획 (완료, 커밋 안 됨)
-│       └── 2026-08-22-rnd-similar-task-search-webapp-plan.md     ← 2단계 계획 (Task 1~5 전부 완료, 커밋 안 됨)
-├── .superpowers\sdd\
-│   └── 2026-08-22-rnd-similar-task-search-webapp-plan\   ← 2단계 SDD 원장(progress.md). 계획상 Task는 다
-│     끝났지만 사람의 브라우저 확인(2.5절)이 남아있어 정리 여부는 보류
-├── "UI mockups for design-brief-handoff.zip"   ← 사용자가 올린 Claude Design 핸드오프 번들 (커밋 안 됨,
-│                                                  git에 올릴지 결정 안 됨 — 다음 세션에서 물어볼 것)
+│       ├── 2026-08-22-rnd-similar-task-search-plan.md            ← 1단계 계획 (완료), 커밋됨
+│       └── 2026-08-22-rnd-similar-task-search-webapp-plan.md     ← 2단계 계획 (Task 1~5 전부 완료), 커밋됨
+├── "UI mockups for design-brief-handoff.zip"   ← Claude Design 핸드오프 번들(바이너리). index.html/css/js로
+│                                                  이미 재현됐으므로 `.gitignore`에 추가, git 이력에는 안 올림
 ├── requirements.txt                      ← pandas/scikit-learn/plotly/ipywidgets/notebook/nbformat
 │                                             + fastapi/uvicorn 등 (BOM 없음)
-├── PROJECT_PLAN.md                       ← 완료조건 4개 유지, 2단계 진행 상태 절 추가(Task 5에서 갱신)
-├── DESIGN_LOG.md                         ← 개정 2 반영 완료(연구자 추천, 0건 처리 결정 과정), 커밋 안 됨
+├── PROJECT_PLAN.md                       ← 완료조건 4개 유지, 2단계 진행 상태 절 추가·완료 반영
+├── DESIGN_LOG.md                         ← 개정 2 반영 완료(연구자 추천, 0건 처리 결정 과정), 커밋됨
 └── HANDOFF.md                            ← 이 파일
 ```
 
-**중요**: `03_webapp/`(backend+frontend+README)는 Task 1~5 진행 중 각 태스크가 끝날 때마다 이미 커밋됐다
-(아래 6절 커밋 목록 참고). 반면 `00_docs/superpowers/plans/`, `00_docs/design-brief.md`, 스펙/DESIGN_LOG
-수정본, `project-plan-report.md`, zip 파일은 **여전히 커밋 안 됨**(git status 참고) — 다음 세션에서
-사용자와 상의해서 정리할 것. Task 5에서 이 파일들을 정리·커밋하지 않은 이유: 이 작업들은 원래 Task 5
-범위(`03_webapp/README.md`, `HANDOFF.md`, `PROJECT_PLAN.md`)가 아니고, "사용자가 명시적으로 요청할 때만
-커밋" 원칙을 지켰다.
+`.superpowers/sdd/2026-08-22-rnd-similar-task-search-webapp-plan/`(2단계 SDD 원장)은 최종 브랜치 리뷰까지
+클린하게 끝난 뒤 삭제됨 — 기록은 git 히스토리에 남아있다.
+
+**모든 파일이 커밋되고 `origin/main`에 push됨.** 미커밋 파일 없음(zip 제외 — `.gitignore` 처리).
 
 ---
 
 ## 6. Git / GitHub 현황
 
-- 브랜치 `main`에서 직접 작업 중(사용자가 명시적으로 동의함 — 1일짜리 개인 프로토타입, 별도 브랜치 없음)
-- **origin/main보다 17개 이상 커밋 앞서 있고 아직 푸시 안 함** (Task 5 커밋 포함하면 더 늘어남 —
-  `git status`로 정확한 수 확인)
+- 브랜치 `main`에서 직접 작업(사용자가 명시적으로 동의함 — 1일짜리 개인 프로토타입, 별도 브랜치 없음)
+- **`origin/main`과 완전히 동기화됨** (2026-08-22, 마지막 push 커밋 `9818ac6`) — ahead/behind 0
 - remote = `https://github.com/rome5200/R-D.git` (private)
-- 푸시는 인증 창이 필요해 에이전트가 못 함 → 사용자가 직접 `git push` 실행해야 함
-- `01_data/*.csv`, `.venv/`, `.omc/`는 `.gitignore`로 계속 제외 — 이 원칙 유지
+- `01_data/*.csv`, `.venv/`, `.omc/`, `UI mockups for design-brief-handoff.zip`은 `.gitignore`로 제외 —
+  이 원칙 유지
 
 ---
 
@@ -257,17 +253,9 @@ C:\project\
 
 ---
 
-## 8. 다음 세션 첫 행동 (그대로 따라 하면 됨)
+## 8. 프로젝트 상태 — 완료
 
-**2단계 웹앱 계획(Task 1~5)의 코드/문서 구현은 전부 끝났다.** 다음 세션에서 할 새 구현 Task는 없다.
-남은 건:
-
-1. 이 파일(특히 2.5절)을 읽고 `git status --short`로 현재 상태가 이 문서와 일치하는지 확인한다
-2. **사용자에게 `03_webapp/README.md`의 커맨드로 서버를 띄우고 브라우저에서 완료조건 4개(2.5절, 또는
-   `PROJECT_PLAN.md` 3절)를 직접 확인해달라고 요청한다** — 에이전트가 대신 할 수 없는 부분
-3. (선택) 1단계 때처럼 2단계 전체에 대한 최종 브랜치 리뷰(Opus)를 돌려서 Task별 리뷰로 못 잡는 통합
-   결함이 있는지 확인한다
-4. 사용자 확인이 끝나면: `.superpowers/sdd/2026-08-22-rnd-similar-task-search-webapp-plan/`(SDD
-   워크스페이스) 정리 여부, 그리고 5절에 남아있는 커밋 안 된 파일들(계획 문서, 디자인 브리프, zip 등)을
-   커밋할지/`.gitignore`에 넣을지를 사용자와 상의해서 정리한다
-5. `origin/main`에 대한 `git push`는 인증이 필요해 에이전트가 못 한다 — 사용자가 직접 실행해야 한다
+**1단계(노트북)와 2단계(웹앱) 모두 완료, 검증 완료, 커밋·push까지 끝났다.** 새로 할 구현 Task는 없다.
+다음 세션에서 이어갈 작업이 생기면 이 파일의 §1(1단계)·§2(2단계)·§3(확정된 사실)·§4(기각된 것)를
+배경지식으로 참고하면 된다. 새 기능/변경을 시작할 때는 그 작업 전용 계획을 새로 세울 것 — 이 문서는
+1~2단계 완료 기록이지 향후 작업의 TODO가 아니다.
