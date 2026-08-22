@@ -23,3 +23,6 @@ desktop.ini
 
 # --- Claude Design 핸드오프 번들 (바이너리, index.html/css/js로 이미 재현됨) ---
 UI mockups for design-brief-handoff.zip
+
+# --- 로컬 서버 실행 로그 ---
+uvicorn.log

@@ -9,8 +9,9 @@
 
 **1단계(Jupyter 노트북)와 2단계(FastAPI 웹앱) 모두 완전히 끝났다.** 구현(Task 1~5) → 태스크별 리뷰 →
 전체 브랜치 최종 리뷰(Opus, Important 3건 발견 → 수정 → 재검토 클린) → qa-verifier 코드 트레이스 →
-**사용자가 직접 브라우저로 완료조건 4개를 확인 완료(2026-08-22)**까지 전부 끝났다. 커밋·`origin/main`
-push까지 완료. 남은 건 없음 — 이 프로젝트는 완료 상태다.
+**사용자가 직접 브라우저로 완료조건 4개를 확인 완료(2026-08-22)**까지 전부 끝났다. 이후 **3단계로
+화면1 검색에 임베딩 기반 유사도를 추가**했고(§8), HCX 설명 레이어는 검토 후 보류하기로 확정했다.
+남은 구현 Task 없음.
 
 ---
 
@@ -170,6 +171,7 @@ PROJECT_PLAN.md 3절의 완료조건 4개 — API 레벨 검증(Task 2) + qa-ver
 | 동명이인(이름 같고 연구자번호 다름) | 64건 |
 | 이름+소속기관까지 같은데 다른 사람 (연구자번호 뒷4자리 표기 대상) | **11쌍** |
 | 최종 확정 파라미터 | `SIMILARITY_THRESHOLD=0.15`, `N_CLUSTERS=6`, `TOP_N_TASKS=5`, `TOP_N_RESEARCHERS=5` |
+| 3단계 추가 파라미터(§8) | `EMBEDDING_SIMILARITY_THRESHOLD=0.6` (TF-IDF와 다른 척도라 별도 보정, 근거는 §8 참고) |
 
 **정규화 방식 주의**: 스펙에 한때 "법인 접미사 제거"라고 적혀 있었으나 실측 결과 접미사 제거를 하면
 27개/1,680건이 아니라 30개/2,008건으로 어긋난다(매칭된 27개 기관이 전부 대학·출연연·진흥원이라 원래
@@ -186,7 +188,8 @@ PROJECT_PLAN.md 3절의 완료조건 4개 — API 레벨 검증(Task 2) + qa-ver
 |---|---|
 | **기술이전 성과 발생 예측** | 데이터에 label이 없음. 특허·기술이전·매출 컬럼 전무. `사업년도==선정년도`가 11,788건 전부 일치해 다년도 추적 불가 |
 | **기업↔연구자 매칭** (그 명칭) | 조인된 27개 기관 중 실제 기업은 1개뿐. 연구자 추천으로 재정의 |
-| **웹앱 클러스터에 의미 라벨 붙이기** (2단계에서 새로 결정) | 비지도학습 결과에 근거 없는 라벨은 위 "기술이전 예측" 기각과 같은 이유로 위험 — "클러스터 N"으로만 표시 |
+| **웹앱 클러스터에 의미 라벨 붙이기** (2단계에서 새로 결정, 3단계 검토에서도 재확인) | 비지도학습 결과에 근거 없는 라벨은 위 "기술이전 예측" 기각과 같은 이유로 위험 — "클러스터 N"으로만 표시 |
+| **HCX 유사 이유 설명 레이어(화면1)** (3단계에서 검토 후 보류, `00_docs/review_request.md` 참고) | 핵심 문제(TF-IDF의 의미적 유사 매칭 누락)는 임베딩으로 이미 해결됨. 남는 가치(설명 문구)보다 비용(실시간 외부 API 호출·키 관리·"외부 연동 0개" 아키텍처 개정)이 커서 보류 — 로컬 LLM 클러스터 라벨링도 같은 검토에서 함께 반려 |
 
 ---
 
@@ -210,6 +213,7 @@ C:\project\
 ├── 00_docs\
 │   ├── design-brief.md                   ← Claude Design에 넣었던 디자인 브리프, 커밋됨
 │   ├── project-plan-report.md            ← 사용자가 직접 작성한 발표용 계획서, 커밋됨
+│   ├── review_request.md                 ← 3단계 검토 요청 문서 + 검토 결과(HCX 보류 등) 기록, 커밋됨
 │   ├── superpowers\specs\
 │   │   └── 2026-08-21-rnd-similar-task-search-design.md   ← 스펙 개정 2 (정규화 문구 수정됨), 커밋됨
 │   └── superpowers\plans\
@@ -218,7 +222,8 @@ C:\project\
 ├── "UI mockups for design-brief-handoff.zip"   ← Claude Design 핸드오프 번들(바이너리). index.html/css/js로
 │                                                  이미 재현됐으므로 `.gitignore`에 추가, git 이력에는 안 올림
 ├── requirements.txt                      ← pandas/scikit-learn/plotly/ipywidgets/notebook/nbformat
-│                                             + fastapi/uvicorn 등 (BOM 없음)
+│                                             + fastapi/uvicorn + sentence-transformers/torch(3단계 추가)
+│                                             등 (BOM 없음)
 ├── PROJECT_PLAN.md                       ← 완료조건 4개 유지, 2단계 진행 상태 절 추가·완료 반영
 ├── DESIGN_LOG.md                         ← 개정 2 반영 완료(연구자 추천, 0건 처리 결정 과정), 커밋됨
 └── HANDOFF.md                            ← 이 파일
@@ -234,7 +239,8 @@ C:\project\
 ## 6. Git / GitHub 현황
 
 - 브랜치 `main`에서 직접 작업(사용자가 명시적으로 동의함 — 1일짜리 개인 프로토타입, 별도 브랜치 없음)
-- **`origin/main`과 완전히 동기화됨** (2026-08-22, 마지막 push 커밋 `9818ac6`) — ahead/behind 0
+- **3단계 커밋(`fa443eb`, `db095e6`, `bb7a389` + 이 HANDOFF 갱신)까지 `origin/main`에 push 완료**
+  (2026-08-22)
 - remote = `https://github.com/rome5200/R-D.git` (private)
 - `01_data/*.csv`, `.venv/`, `.omc/`, `UI mockups for design-brief-handoff.zip`은 `.gitignore`로 제외 —
   이 원칙 유지
@@ -244,7 +250,10 @@ C:\project\
 ## 7. 환경 정보
 
 - Python 3.13.15 기반 `.venv`(`C:\project\.venv`) — pandas, scikit-learn, plotly, ipywidgets, notebook,
-  nbformat, nbconvert, **fastapi, uvicorn**(2단계에서 추가) 전부 설치됨
+  nbformat, nbconvert, **fastapi, uvicorn**(2단계에서 추가), **sentence-transformers, torch**(3단계에서
+  추가, CPU 전용 휠) 전부 설치됨
+- **Microsoft Visual C++ 재배포 패키지(`vc_redist.x64.exe`)를 이 서버에 설치함(3단계)** — 이게 없으면
+  Windows에서 `import torch`가 `c10.dll` 로드 오류로 실패함. 상세는 `03_webapp/README.md` "준비" 참고
 - Windows Server 2022, 콘솔이 cp1252라 한글 `print()` 시 `UnicodeEncodeError` 남 →
   `$env:PYTHONIOENCODING="utf-8"`을 먼저 설정하고 실행할 것 (특히 uvicorn 서버 기동 시 필수, 위 2.3절
   참고)
@@ -253,9 +262,63 @@ C:\project\
 
 ---
 
-## 8. 프로젝트 상태 — 완료
+## 8. 3단계 — 화면1 검색 임베딩 보강 + HCX 검토 (2026-08-22 추가)
 
-**1단계(노트북)와 2단계(웹앱) 모두 완료, 검증 완료, 커밋·push까지 끝났다.** 새로 할 구현 Task는 없다.
-다음 세션에서 이어갈 작업이 생기면 이 파일의 §1(1단계)·§2(2단계)·§3(확정된 사실)·§4(기각된 것)를
-배경지식으로 참고하면 된다. 새 기능/변경을 시작할 때는 그 작업 전용 계획을 새로 세울 것 — 이 문서는
-1~2단계 완료 기록이지 향후 작업의 TODO가 아니다.
+### 8.1 계기
+
+TF-IDF는 표면 단어 매칭이라 "AI"/"인공지능" 같은 표현 차이는 물론, "리튬이온 배터리 열폭주 억제" ↔
+"이차전지 셀 발열 안정화"처럼 어휘가 거의 안 겹치는 의미적 유사(Semantic Overlap)도 놓친다는 한계가
+대화 중 발견됐다. 별도로 `00_docs/review_request.md`(다른 세션과 브레인스토밍한 문서)에 "로컬 LLM
+클러스터 라벨링 + HCX 유사 이유 설명" 제안이 검토 요청으로 들어와 있었는데, 두 사안을 함께 검토했다.
+
+### 8.2 결정 — 채택한 것과 반려한 것
+
+- **채택**: 화면1 검색에만 로컬 한국어 문장 임베딩(`jhgan/ko-sroberta-multitask`, `sentence-transformers`)을
+  TF-IDF와 병행 계산해 두 유사도 중 큰 값을 사용. 화면2 클러스터링(TruncatedSVD+KMeans)은 손대지 않음 —
+  둘 다 같은 `tfidf_matrix`를 쓰던 걸 그대로 두어, 이미 검증된 완료조건 2(화면1↔화면2 클러스터 일치)를
+  재검증할 필요가 없게 함.
+- **반려 — 로컬 LLM 클러스터 라벨링**: `HANDOFF.md` §4에 이미 기록된 이유(비지도 클러스터에 근거 없는
+  라벨 = "기술이전 예측" 기각과 같은 값 발명 문제)로 재확인 반려. `review_request.md`를 쓴 세션은 이
+  기존 결정을 몰랐던 것으로 보임.
+- **보류 — HCX 유사 이유 설명 레이어**: 원래 동기("1일차/2일차 실습" 서사)가 과정 평가 요건이 아니라
+  순수 아이디어였음을 사용자에게 확인함. 핵심 문제가 임베딩으로 이미 풀린 상태에서, 실시간 외부 API
+  호출(키 관리·네트워크 의존·`PROJECT_PLAN.md` 5/6/7번 "외부 연동 0개" 표 개정 필요)이라는 비용 대비
+  가치가 낮다고 판단. 설계 자체는 `review_request.md`에 남겨둠 — 나중에 필요해지면 재사용 가능.
+
+### 8.3 구현 상세 — `03_webapp/backend/pipeline.py`
+
+- `PipelineState`에 `embedder`(`SentenceTransformer`)·`embeddings`(과제명 1,680건 임베딩, `load_and_build()`
+  때 1회 계산) 필드 추가
+- `search_similar_tasks()`: 쿼리 임베딩과 코사인 유사도 계산 후, **`EMBEDDING_SIMILARITY_THRESHOLD=0.6`를
+  못 넘으면 0으로 눌러서(gating)** TF-IDF 임계값(0.15)에 새어 들어가지 않게 함 — 처음 게이팅 없이
+  `max(tfidf_sims, embedding_sims)`만 썼을 때 예시 3문장 카운트가 30/8/7건에서 1180/1282/874건으로
+  폭발하는 버그가 실제로 있었다(임베딩 코사인 유사도는 완전히 무관한 문장 쌍도 노이즈 플로어가 0.15~0.5대라
+  TF-IDF용 낮은 임계값을 그대로 못 씀). 0.6은 실측 분포로 보정한 값(무관 질의 최대 유사도 ~0.61, 진짜
+  의미 유사 사례는 0.65 안팎) — 근거는 `PROJECT_PLAN.md` 11절
+- 재보정 후 실측: 예시 3문장 37/26/11건(기존 30/8/7건 대비 자연스러운 증가), "리튬이온 배터리 열폭주
+  억제" 질의가 TF-IDF로는 0건이던 것을 임베딩만으로 2건 포착(sim 0.657/0.652) — 실제 서버 기동 후
+  `urllib`로 직접 호출해 확인 완료(curl은 이 환경 Git Bash 로케일이 한글 쿼리를 깨뜨려서 오탐 결과를
+  낼 수 있으니 다음에도 쓰지 말 것)
+
+### 8.4 환경 이슈와 조치
+
+- Windows Server에 Microsoft Visual C++ 재배포 패키지가 없어 `import torch`가 `c10.dll` 로드 오류로
+  실패 → 사용자 승인 받고 공식 MS 배포파일(`vc_redist.x64.exe`) 설치로 해결(§7 참고)
+- 검증 중 포트 8000에 **이전 세션이 띄워둔 오래된 서버 프로세스**가 남아 있어서 새 코드로 재기동한
+  서버가 바인딩에 실패하고, 옛 프로세스가 계속 요청을 받아 한동안 엉뚱한(옛 코드 기준) 결과를 봤다.
+  다음에 이 프로젝트 서버를 기동할 때는 `netstat -ano | grep :8000`으로 기존 리스너가 있는지 먼저
+  확인할 것.
+
+### 8.5 커밋
+
+`fa443eb`(임베딩 보강 구현) → `db095e6`(review_request.md 추가) → `bb7a389`(HCX 보류 결정 기록) →
+이 HANDOFF 갱신 커밋까지.
+
+---
+
+## 9. 프로젝트 상태 — 완료
+
+**1단계(노트북), 2단계(웹앱), 3단계(화면1 임베딩 보강) 모두 완료, 검증 완료, 커밋까지 끝났다.** 새로
+할 구현 Task는 없다(HCX는 보류 상태로 남음, §8.2 참고). 다음 세션에서 이어갈 작업이 생기면 이 파일의
+§1(1단계)·§2(2단계)·§3(확정된 사실)·§4(기각된 것)·§8(3단계)을 배경지식으로 참고하면 된다. 새 기능/변경을
+시작할 때는 그 작업 전용 계획을 새로 세울 것 — 이 문서는 완료 기록이지 향후 작업의 TODO가 아니다.
