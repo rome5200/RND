@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R&D 특구 유사 과제 검색</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="header-title">R&amp;D 특구 유사 과제 검색</span>
+      <span class="header-sub">공개데이터 기반 프로토타입</span>
+    </div>
+    <div class="header-sub" style="border-left:none">TF-IDF · KMeans(6) · TruncatedSVD</div>
+  </div>
+
+  <div class="page">
+    <div class="section-title">
+      <span class="section-num">01</span>
+      <span class="section-heading">유사 과제 검색</span>
+      <span class="section-desc">주제를 입력하면 임계값 이상으로 유사한 기존 과제와 수행 연구자를 보여줍니다.</span>
+    </div>
+
+    <div class="card search-card">
+      <div class="field">
+        <label for="topic-input">과제 주제:</label>
+        <input id="topic-input" type="text" placeholder="준비 중인 과제의 주제를 입력하세요">
+      </div>
+      <div class="field field-rank">
+        <label for="rank-select">랭킹 기준:</label>
+        <select id="rank-select">
+          <option value="최고 유사도">최고 유사도</option>
+          <option value="유사 과제 건수">유사 과제 건수</option>
+          <option value="합산 점수">합산 점수</option>
+        </select>
+      </div>
+      <button id="search-btn">검색</button>
+    </div>
+
+    <div id="result-banner"></div>
+
+    <div class="stat-grid">
+      <div class="card stat-card">
+        <div class="stat-label">추정 클러스터</div>
+        <div class="stat-value accent" id="stat-cluster">–</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">유사 과제 건수</div>
+        <div class="stat-value" id="stat-count">–</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">수행 기관</div>
+        <div class="org-tags" id="stat-orgs"></div>
+      </div>
+    </div>
+
+    <div class="card table-card">
+      <div class="table-head">
+        <div class="table-head-left">
+          <span class="table-head-title">유사 과제</span>
+          <span class="table-head-sub" id="task-table-note">유사도 상위 5건</span>
+        </div>
+      </div>
+      <div class="task-row task-row-head">
+        <div class="col-label">과제명</div><div class="col-label">주관기관명</div>
+        <div class="col-label">연도</div><div class="col-label">유사도</div><div class="col-label">클러스터</div>
+      </div>
+      <div id="task-table-body"></div>
+    </div>
+
+    <div class="card table-card">
+      <div class="table-head">
+        <div class="table-head-left">
+          <span class="table-head-title">연구자 추천</span>
+          <span class="table-head-sub">상위 5명</span>
+        </div>
+        <span class="rank-badge" id="researcher-note">정렬 기준: 최고 유사도</span>
+      </div>
+      <div class="researcher-row researcher-row-head">
+        <div class="col-label">연구책임자명</div><div class="col-label">주관기관명</div>
+        <div class="col-label">특구지역</div><div class="col-label">대표 유사 과제명</div>
+        <div class="col-label">유사도</div><div class="col-label">과제수</div>
+      </div>
+      <div id="researcher-table-body"></div>
+      <div style="padding:14px 24px;font-size:12px;color:var(--muted)">
+        동명이인(이름·기관 동일)은 연구자번호 뒷 4자리를 괄호로 표기합니다.
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--line);margin:12px 0"></div>
+
+    <div class="section-title">
+      <span class="section-num">02</span>
+      <span class="section-heading">전체 클러스터 지도</span>
+      <span class="section-desc">TruncatedSVD 2차원 투영 · KMeans 6개 클러스터</span>
+    </div>
+
+    <div class="card map-card">
+      <div class="map-svg-wrap">
+        <svg id="cluster-svg" viewBox="0 0 880 520" style="width:100%;height:auto;display:block"></svg>
+      </div>
+      <div class="map-legend">
+        <div class="stat-label">클러스터 범례</div>
+        <div id="cluster-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
