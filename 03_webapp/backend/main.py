@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 
 from . import pipeline
@@ -21,3 +21,33 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+
+@app.get("/api/clusters")
+def get_clusters():
+    points = pipeline.get_cluster_points(state)
+    return {"points": points, "n_clusters": pipeline.N_CLUSTERS}
+
+
+@app.get("/api/search")
+def get_search(
+    query: str = Query(default=""),
+    threshold: float = Query(default=pipeline.SIMILARITY_THRESHOLD),
+    rank_by: str = Query(default="최고 유사도"),
+):
+    result = pipeline.search_similar_tasks(state, query, threshold=threshold)
+
+    if result.get("blank_query") or result.get("empty_corpus"):
+        return {**result, "tasks": [], "researchers_reference_only": None, "researchers": []}
+
+    sims = result.pop("sims")
+    # pipeline.search_similar_tasks returns matched/reference rows under the "table" key;
+    # the API response exposes them as "tasks" per this endpoint's documented contract.
+    tasks = result.pop("table")
+    rec = pipeline.recommend_researchers(state, sims, threshold=threshold, rank_by=rank_by)
+    return {
+        **result,
+        "tasks": tasks,
+        "researchers_reference_only": rec["reference_only"],
+        "researchers": rec["table"],
+    }
