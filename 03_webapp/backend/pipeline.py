@@ -1,6 +1,7 @@
 """웹앱 백엔드용 검색·클러스터링·연구자 추천 파이프라인.
 02_notebook/similar_task_search.ipynb의 검증된 알고리즘을 API 서버용으로 독립 재구현한 것 — 노트북 파일
 자체는 참조/수정하지 않는다."""
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,7 +25,10 @@ TOP_N_TASKS = 5
 TOP_N_RESEARCHERS = 5
 RANK_OPTIONS = ["최고 유사도", "유사 과제 건수", "합산 점수"]
 EMBEDDING_MODEL_NAME = "jhgan/ko-sroberta-multitask"
-
+# 중복투자 위험 신호 — 유사도 0.75 이상 과제들 중 '다른 기관 × 선정년도 차이 2년 이내' 쌍에
+# 속하는 과제를 위험군으로 판정. 검색 임계값(0.15)과 독립적으로 전체 sims 배열에 대해 계산한다.
+DUPLICATION_SIMILARITY_THRESHOLD = 0.75
+DUPLICATION_YEAR_WINDOW = 2  # 선정년도 차이 허용 범위(년)
 
 @dataclass
 class PipelineState:
@@ -37,6 +41,13 @@ class PipelineState:
     dup_pairs: set
     embedder: SentenceTransformer
     embeddings: np.ndarray
+    # ── A.3 지역 기술편중용 전체 코퍼스 참조 인덱스 (기존 1,680 파이프라인과 독립, 계약 §7.4) ──
+    full_df: pd.DataFrame
+    full_vectorizer: TfidfVectorizer
+    full_tfidf_matrix: object
+    full_embeddings: np.ndarray
+    region_scale: dict
+    region_concentration: list
 
 
 def _load_joined_df() -> pd.DataFrame:
@@ -80,6 +91,131 @@ def display_researcher_name(row, dup_pairs: set) -> str:
     return row["연구책임자명"]
 
 
+# ── A.3 지역 기술편중 분석 ────────────────────────────────────────────────
+# 규모지표 출처 주의: 01_data/특구통계조사총괄.csv는 '구분'=연도(2005~2024)인 전국 연도별 합계
+# 시계열이라 특구별 정규화에 못 쓴다. 특구별 규모 프록시는 특구입주기업현황.csv의 특구별
+# 입주기업 수를 직접 집계해서 쓴다.
+
+def _normalize_region(s) -> str:
+    """'강소(경기안산)'·'강소(충북청주)' 등 세분 표기를 '강소'로 통합. 그 외는 그대로."""
+    return re.sub(r"강소\(.*\)", "강소", str(s))
+
+
+def _load_full_and_scale() -> tuple[pd.DataFrame, dict]:
+    """전체 과제(보안 제외 11,783건)에 특구소속 여부·정규화 특구명을 부착하고,
+    특구별 입주기업 수(규모 프록시)를 함께 반환한다. 기존 _load_joined_df와 독립."""
+    companies = pd.read_csv(DATA_DIR / "특구입주기업현황.csv", encoding="cp949")
+    companies = companies.rename(columns={"지역": "특구지역"})
+    companies["특구_norm"] = companies["특구지역"].map(_normalize_region)
+    companies["_key"] = companies["기관명"].str.strip()
+
+    tasks_raw = pd.read_csv(DATA_DIR / "이알앤디_과제정보.csv", encoding="cp949")
+    tasks = tasks_raw[tasks_raw["보안과제여부"] != "Y"].copy().reset_index(drop=True)
+    assert len(tasks) == 11783, f"보안과제 제외 후 건수가 예상과 다름: {len(tasks)}"
+    tasks["과제명"] = tasks["과제명"].fillna("")
+    tasks["_key"] = tasks["주관기관명"].str.strip()
+
+    key2region = companies.drop_duplicates(subset="_key").set_index("_key")["특구_norm"]
+    tasks["특구_norm"] = tasks["_key"].map(key2region)
+    tasks["특구소속"] = tasks["특구_norm"].notna()
+    n_tukku = int(tasks["특구소속"].sum())
+    assert n_tukku == 1680, f"특구소속 과제 수가 예상과 다름: {n_tukku}"
+
+    region_scale = {k: int(v) for k, v in companies["특구_norm"].value_counts().items()}
+    return tasks.drop(columns=["_key"]).reset_index(drop=True), region_scale
+
+
+def _build_concentration(full_df: pd.DataFrame, region_scale: dict) -> list:
+    """전체 특구소속 1,680건 기준의 고정 편중지표(입지계수 LQ). query와 무관한 구조 지표.
+    LQ = (특구 과제 점유율) / (특구 입주기업 점유율). >1 과집중, <1 과소."""
+    sub = full_df[full_df["특구소속"]]
+    task_counts = sub["특구_norm"].value_counts()
+    total_tasks = int(task_counts.sum())
+    total_scale = sum(region_scale.values())
+    rows = []
+    for region, tc in task_counts.items():
+        sc = region_scale.get(region, 0)
+        task_share = tc / total_tasks if total_tasks else 0.0
+        firm_share = sc / total_scale if total_scale else 0.0
+        lq = (task_share / firm_share) if firm_share else None
+        rows.append({
+            "특구": region, "과제수": int(tc), "과제_비중": round(task_share, 4),
+            "입주기업수": int(sc), "기업_비중": round(firm_share, 4),
+            "집중도_LQ": round(lq, 3) if lq is not None else None,
+        })
+    rows.sort(key=lambda r: -r["과제수"])
+    return rows
+
+
+def region_breakdown(state: "PipelineState", query: str,
+                     threshold: float = SIMILARITY_THRESHOLD, top_n: int = 6) -> dict:
+    """전체 코퍼스(11,783)에 질의해 '유사 과제 중 특구소속 비율'과 특구별 분포를 낸다.
+    A.1/A.2 검색(1,680 한정)과 독립 — count 등 기존 계약 필드 의미를 바꾸지 않는다."""
+    fdf = state.full_df
+    empty = {"total_matched": 0, "특구소속_matched": 0, "특구소속_비율": None,
+             "regions": [], "top3": []}
+    if len(fdf) == 0:
+        return {"empty_corpus": True, "blank_query": False, "reference_only": False, **empty}
+    if query is None or not query.strip():
+        return {"empty_corpus": False, "blank_query": True, "reference_only": False, **empty}
+
+    qv = state.full_vectorizer.transform([query])
+    tfidf_sims = cosine_similarity(qv, state.full_tfidf_matrix).flatten()
+    q_emb = state.embedder.encode([query], normalize_embeddings=True)[0]
+    emb_sims = state.full_embeddings @ q_emb
+    gated = np.where(emb_sims >= EMBEDDING_SIMILARITY_THRESHOLD, emb_sims, 0.0)
+    sims = np.maximum(tfidf_sims, gated)
+
+    matched = np.where(sims >= threshold)[0]
+    total = int(len(matched))
+    if total == 0:
+        return {"empty_corpus": False, "blank_query": False, "reference_only": True, **empty}
+
+    msub = fdf.iloc[matched]
+    tukku = int(msub["특구소속"].sum())
+    ratio = tukku / total
+    regions = []
+    if tukku > 0:
+        vc = msub[msub["특구소속"]]["특구_norm"].value_counts()
+        total_scale = sum(state.region_scale.values())
+        for region, cnt in vc.items():
+            sc = state.region_scale.get(region, 0)
+            share = cnt / tukku
+            firm_share = sc / total_scale if total_scale else 0.0
+            lq = (share / firm_share) if firm_share else None
+            regions.append({
+                "특구": region, "count": int(cnt), "share": round(share, 4),
+                "입주기업수": int(sc), "집중도_LQ": round(lq, 3) if lq is not None else None,
+            })
+        regions.sort(key=lambda r: -r["count"])
+    return {
+        "empty_corpus": False, "blank_query": False, "reference_only": False,
+        "total_matched": total, "특구소속_matched": tukku,
+        "특구소속_비율": round(ratio, 4),
+        "regions": regions[:top_n], "top3": regions[:3],
+    }
+
+
+def cluster_region_crosstab(state: "PipelineState") -> dict:
+    """1,680건을 KMeans 클러스터(0~5) × 정규화 특구로 교차집계. 화면2(클러스터 지도)의 _cluster를
+    그대로 재사용하므로 화면1↔화면2 클러스터 일치 완료조건과 충돌하지 않는다. query 무관 고정."""
+    df = state.df.copy()
+    df["_rn"] = df["특구지역"].map(_normalize_region)
+    regions = list(df["_rn"].value_counts().index)          # 총계 내림차순
+    clusters = list(range(N_CLUSTERS))
+    ct = df.groupby(["_cluster", "_rn"]).size().unstack(fill_value=0)
+    matrix = [[int(ct.loc[c, r]) if (c in ct.index and r in ct.columns) else 0
+               for r in regions] for c in clusters]
+    return {
+        "clusters": clusters,
+        "regions": regions,
+        "matrix": matrix,
+        "row_totals": [int(sum(row)) for row in matrix],
+        "col_totals": [int(df[df["_rn"] == r].shape[0]) for r in regions],
+        "grand_total": int(len(df)),
+    }
+
+
 def load_and_build() -> PipelineState:
     df = _load_joined_df()
     dup_pairs = _compute_dup_pairs(df)
@@ -100,10 +236,20 @@ def load_and_build() -> PipelineState:
     embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
     embeddings = embedder.encode(df["과제명"].tolist(), normalize_embeddings=True)
 
+    # ── A.3 전체 코퍼스(11,783) 참조 인덱스 — 지역 기술편중 전용 (검색 파이프라인 불변) ──
+    full_df, region_scale = _load_full_and_scale()
+    full_vectorizer = TfidfVectorizer()
+    full_tfidf_matrix = full_vectorizer.fit_transform(full_df["과제명"])
+    full_embeddings = embedder.encode(full_df["과제명"].tolist(), normalize_embeddings=True)
+    region_concentration = _build_concentration(full_df, region_scale)
+
     return PipelineState(
         df=df, vectorizer=vectorizer, tfidf_matrix=tfidf_matrix,
         svd=svd, coords=coords, kmeans=kmeans, dup_pairs=dup_pairs,
         embedder=embedder, embeddings=embeddings,
+        full_df=full_df, full_vectorizer=full_vectorizer,
+        full_tfidf_matrix=full_tfidf_matrix, full_embeddings=full_embeddings,
+        region_scale=region_scale, region_concentration=region_concentration,
     )
 
 
@@ -223,3 +369,55 @@ def recommend_researchers(state: PipelineState, sims: np.ndarray, threshold: flo
         for _, row in selected.iterrows()
     ]
     return {"reference_only": reference_only, "table": table}
+
+def detect_duplication_risk(
+    state: PipelineState,
+    sims: np.ndarray,
+    sim_threshold: float = DUPLICATION_SIMILARITY_THRESHOLD,
+    year_window: int = DUPLICATION_YEAR_WINDOW,
+) -> dict:
+    """유사도 sim_threshold 이상인 과제들 중, 서로 기관이 다르고 선정년도 차이가
+    year_window 이내인 쌍에 한 번이라도 속하는 과제를 '중복투자 위험군'으로 집계한다.
+    쌍 성립 조건상 위험군이 존재하면 관련 기관 수는 항상 2개 이상이다."""
+    df = state.df
+    empty = {
+        "duplication_risk": False, "risk_count": 0,
+        "institution_count": 0, "researcher_count": 0,
+        "duplication_tasks": [],
+    }
+
+    high_idx = np.where(sims >= sim_threshold)[0]
+    if len(high_idx) < 2:
+        return empty
+
+    sub = df.iloc[high_idx].copy()
+    sub["_sim"] = sims[high_idx]
+    years = sub["선정년도"].to_numpy()
+    orgs = sub["주관기관명"].to_numpy()
+
+    n = len(sub)
+    risky = np.zeros(n, dtype=bool)
+    for a in range(n):
+        for b in range(a + 1, n):
+            if orgs[a] != orgs[b] and abs(int(years[a]) - int(years[b])) <= year_window:
+                risky[a] = risky[b] = True
+
+    if not risky.any():
+        return empty
+
+    risk_rows = sub[risky].sort_values("_sim", ascending=False)
+    tasks = [
+        {
+            "과제명": r["과제명"], "주관기관명": r["주관기관명"],
+            "선정년도": int(r["선정년도"]), "유사도": round(float(r["_sim"]), 3),
+            "연구책임자명": display_researcher_name(r, state.dup_pairs),
+        }
+        for _, r in risk_rows.iterrows()
+    ]
+    return {
+        "duplication_risk": True,
+        "risk_count": int(len(risk_rows)),
+        "institution_count": int(risk_rows["주관기관명"].nunique()),
+        "researcher_count": int(risk_rows["연구자번호"].nunique()),
+        "duplication_tasks": tasks,
+    }

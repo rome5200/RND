@@ -71,3 +71,93 @@ body { margin: 0; background: #F7F8F8; font-family: NanumSquare, system-ui, sans
 .legend-row { display: flex; align-items: center; gap: 10px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 999px; flex: none; }
 .legend-label { font-size: 13px; font-weight: 700; width: 90px; }
+
+/* 중복투자 위험 카드 */
+.dup-card { border-color: #F3C7C4; background: #FEF4F3; overflow: hidden; }
+.dup-head { display: flex; align-items: center; gap: 14px; padding: 18px 24px; }
+.dup-icon { font-size: 22px; color: #C0362C; line-height: 1; }
+.dup-head-text { flex: 1; }
+.dup-title { font-size: 16px; font-weight: 800; color: #B4231A; letter-spacing: -0.3px; }
+.dup-sub { font-size: 12.5px; color: #8A4A44; margin-top: 2px; }
+.dup-metrics { display: flex; gap: 22px; }
+.dup-metric { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.dup-metric-value { font-size: 26px; font-weight: 800; color: #B4231A; line-height: 1; letter-spacing: -1px; }
+.dup-metric-label { font-size: 11px; font-weight: 700; color: #8A4A44; }
+.dup-list-head { padding: 14px 24px 10px; font-size: 12px; font-weight: 800; color: #8A4A44; border-top: 1px solid #F3D3D0; }
+.dup-row { display: grid; grid-template-columns: 1fr 200px 68px 92px 120px; align-items: center; padding: 11px 24px; border-bottom: 1px solid #F6DEDB; font-size: 13px; }
+.dup-row-head { padding: 0 24px 8px; border-bottom: 1px solid #F0CFCB; }
+.dup-row:last-child { border-bottom: none; }
+
+/* ── A.2 위험도 배지 ───────────────────────────────────────────── */
+.risk-card { padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+.risk-head { display: flex; align-items: center; gap: 12px; }
+.risk-badge { display: inline-block; font-size: 16px; font-weight: 800; padding: 4px 16px; border-radius: 999px; letter-spacing: -0.3px; }
+.risk-badge.high { background: #FEF4F3; color: #B4231A; border: 1px solid #F3C7C4; }
+.risk-badge.mid  { background: #FFF8E6; color: #7A5B00; border: 1px solid #F5DFA0; }
+.risk-badge.low  { background: var(--mint-tint); color: #00694E; border: 1px solid #CFF0E4; }
+.risk-badge.hold { background: #F1F3F3; color: var(--body-c); border: 1px solid var(--line); }
+.risk-reason { font-size: 12px; color: var(--muted); }
+.tag-summary { font-size: 10px; font-weight: 800; color: #00694E; background: var(--mint-tint); border: 1px solid #CFF0E4; border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+.tag-detail { font-size: 10px; font-weight: 800; color: #8A4A44; background: #FEF4F3; border: 1px solid #F3C7C4; border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+
+/* ── A.2 에고 그래프 ───────────────────────────────────────────── */
+.ego-card { padding: 24px; display: flex; gap: 24px; }
+.ego-svg-wrap { flex: 1; min-width: 0; }
+.ego-legend { width: 236px; display: flex; flex-direction: column; gap: 12px; font-size: 12.5px; font-weight: 700; }
+.ego-legend .legend-row { display: flex; align-items: center; gap: 9px; }
+.ego-legend .legend-dot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.dup-row:last-child { border-bottom: none; }
+
+/* ── A.3 지역 기술편중 ───────────────────────────────────────────── */
+.region-card { padding: 24px; display: flex; flex-direction: column; gap: 22px; }
+.region-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.region-ratio-value { font-size: 44px; font-weight: 800; letter-spacing: -2px; line-height: 1; color: var(--mint); margin-top: 4px; }
+.region-ratio-sub { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.region-block-head { font-size: 13px; font-weight: 800; color: var(--body-c); margin-bottom: 12px; }
+.region-bar-row { display: grid; grid-template-columns: 60px 1fr 44px; align-items: center; gap: 12px; margin-bottom: 9px; }
+.region-bar-name { font-size: 13px; font-weight: 700; color: var(--body-c); }
+.region-bar-track { height: 22px; background: #F1F3F3; border-radius: 6px; overflow: hidden; }
+.region-bar-fill { height: 100%; background: var(--mint-soft); border-radius: 6px; transition: width .3s; }
+.region-bar-row.top .region-bar-fill { background: var(--mint); }
+.region-bar-row.top .region-bar-name { color: #00694E; font-weight: 800; }
+.region-bar-val { font-size: 13px; font-weight: 800; text-align: right; }
+.region-empty { font-size: 13px; color: var(--body-c); background: #F1F3F3; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.region-conc-card { overflow: hidden; }
+.region-scale-note { font-size: 12px; color: var(--muted); padding: 14px 24px 6px; }
+.region-foot { font-size: 12px; color: var(--muted); padding: 12px 24px 18px; line-height: 1.5; }
+.conc-row { display: grid; grid-template-columns: 120px 90px 110px 100px 1fr; align-items: center; padding: 12px 24px; border-bottom: 1px solid #F1F3F3; font-size: 13px; }
+.conc-row-head { border-bottom: 1px solid var(--line); padding: 0 24px 8px; }
+.conc-row:last-child { border-bottom: none; }
+.conc-name { font-weight: 700; }
+.conc-lq { font-weight: 800; letter-spacing: -0.3px; }
+.conc-tag { display: inline-block; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 3px 11px; }
+.conc-tag.over { background: #FEF4F3; color: #B4231A; border: 1px solid #F3C7C4; }
+.conc-tag.norm { background: var(--mint-tint); color: #00694E; border: 1px solid #CFF0E4; }
+.conc-tag.under { background: #F1F3F3; color: var(--body-c); border: 1px solid var(--line); }
+
+/* ── A.3 클러스터 × 특구 크로스탭(화면2) ───────────────────────────── */
+.crosstab-card { overflow: hidden; }
+.crosstab-wrap { padding: 10px 24px 22px; overflow-x: auto; }
+.crosstab { display: grid; gap: 3px; min-width: 520px; }
+.ct-h { font-size: 12px; font-weight: 800; color: var(--body-c); text-align: center; padding: 6px 4px; align-self: end; }
+.ct-rowlabel { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.ct-cell { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border-radius: 6px; background: #F1F3F3; }
+.ct-total { background: #EEF1F1 !important; color: var(--body-c) !important; font-weight: 800; }
+.ct-grand { background: var(--mint-tint) !important; color: #00694E !important; }
+
+/* ── B-4 화면1 특구 집계 인라인 바 ─────────────────────────────────── */
+.region-inline { padding: 14px 20px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.ri-summary { display: flex; align-items: center; gap: 10px; }
+.ri-label { font-size: 11px; font-weight: 800; color: #00694E; background: var(--mint-tint); border: 1px solid #CFF0E4; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.ri-text { font-size: 14px; font-weight: 700; color: var(--ink); }
+.ri-text.muted { color: var(--muted); }
+.ri-text b { font-weight: 800; }
+.ri-pct { color: var(--mint); font-weight: 800; margin-left: 4px; }
+.ri-top3 { display: flex; gap: 16px; flex-wrap: wrap; margin-left: auto; }
+.ri-chip { display: flex; align-items: center; gap: 7px; }
+.ri-chip-name { font-size: 12.5px; font-weight: 700; color: var(--body-c); }
+.ri-chip.lead .ri-chip-name { color: #00694E; font-weight: 800; }
+.ri-chip-bar { width: 56px; height: 8px; background: #F1F3F3; border-radius: 999px; overflow: hidden; }
+.ri-chip-bar > span { display: block; height: 100%; background: var(--mint-soft); border-radius: 999px; }
+.ri-chip.lead .ri-chip-bar > span { background: var(--mint); }
+.ri-chip-val { font-size: 12.5px; font-weight: 800; min-width: 20px; text-align: right; }
