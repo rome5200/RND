@@ -25,12 +25,11 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 # ── A.2 위험도 버킷 (규칙 기반, 새 모델 없음) ─────────────────────────────
-# 실측 캘리브레이션(2026-08-25 재측정): 예시 3문장 count=30/8/7(TF-IDF)~37/26/11(하이브리드),
-# 최고유사도 0.22~0.42. 과거 인용된 211/104/46은 이 데이터에서 재현되지 않아 폐기.
-# RISK_SIM_HIGH는 임베딩 게이트(0.6) 영향으로 하이브리드 top_sim이 더 높게 나올 수 있어
-# _calibrate_risk.py로 재확인 권장.
-RISK_COUNT_HIGH = 20     # count "많음" 기준
-RISK_SIM_HIGH = 0.50     # 최고유사도 "높음" 기준 (잠정 — 캘리브레이션으로 확정)
+# 실측 캘리브레이션(2026-08-30 재측정, _calibrate_risk.py): 예시 3문장 count=37/26/11(하이브리드),
+# 최고유사도 0.728/0.843/0.763(median 0.763). 과거 인용된 0.22~0.42는 임베딩 게이트(0.6) 도입 전
+# TF-IDF 단독 값이라 하이브리드 파이프라인에서 재현되지 않아 폐기 — 이번 값으로 갱신.
+RISK_COUNT_HIGH = 26     # count "많음" 기준 (median 근처)
+RISK_SIM_HIGH = 0.76     # 최고유사도 "높음" 기준 (median 근처)
 
 
 def _risk_bucket(count: int, top_sim, reference_only: bool) -> dict:

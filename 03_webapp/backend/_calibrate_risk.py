@@ -8,8 +8,9 @@ count / 최고유사도를 재측정해, main.py의 RISK_COUNT_HIGH / RISK_SIM_H
     C:\\project\\.venv\\Scripts\\python.exe -m 03_webapp.backend._calibrate_risk
     # 또는 프로젝트 루트에서: python -m 03_webapp.backend._calibrate_risk
 
-※ 2026-08-25 TF-IDF 재측정: 예시 count=30/8/7, 최고유사도 0.275/0.416/0.217.
-  과거 인용된 211/104/46은 재현되지 않았음. 아래 하이브리드 수치로 최종 확정할 것.
+※ 2026-08-30 하이브리드 재측정(최종 확정): 예시 count=37/26/11, 최고유사도 0.763/0.843/0.728.
+  → main.py RISK_COUNT_HIGH=26 / RISK_SIM_HIGH=0.76 반영 완료(api-contract-search.md §7.1 참고).
+  과거 TF-IDF 단독 값(count=30/8/7, sim 0.22~0.42)과 그 이전 211/104/46은 모두 폐기됨.
 """
 import numpy as np
 from . import pipeline
