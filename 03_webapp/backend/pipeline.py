@@ -1,7 +1,9 @@
 """웹앱 백엔드용 검색·클러스터링·연구자 추천 파이프라인.
 02_notebook/similar_task_search.ipynb의 검증된 알고리즘을 API 서버용으로 독립 재구현한 것 — 노트북 파일
 자체는 참조/수정하지 않는다."""
+import os
 import re
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -216,7 +218,25 @@ def cluster_region_crosstab(state: "PipelineState") -> dict:
     }
 
 
+def _ensure_data_downloaded() -> None:
+    """배포 환경(Cloud Run 등)에는 개인정보 포함 CSV를 이미지/코드에 넣지 않으므로, 없으면 비공개
+    HF dataset repo(rome5200/rnd-data-private)에서 컨테이너 기동 시 1회 받아온다. 로컬 개발
+    환경은 01_data/에 파일이 이미 있어 아무 일도 하지 않는다."""
+    needed = ["특구입주기업현황.csv", "이알앤디_과제정보.csv"]
+    if all((DATA_DIR / f).exists() for f in needed):
+        return
+    from huggingface_hub import hf_hub_download
+
+    repo_id = os.environ.get("HF_DATA_REPO", "rome5200/rnd-data-private")
+    token = os.environ.get("HF_TOKEN")
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    for fname in needed:
+        cached = hf_hub_download(repo_id=repo_id, filename=fname, repo_type="dataset", token=token)
+        shutil.copy(cached, DATA_DIR / fname)
+
+
 def load_and_build() -> PipelineState:
+    _ensure_data_downloaded()
     df = _load_joined_df()
     dup_pairs = _compute_dup_pairs(df)
 
